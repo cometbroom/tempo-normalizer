@@ -115,7 +115,7 @@ def recipe(audio_file: str, csv_file: str, bpm: float, audio_output: str) -> Non
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="A script with 3 positional arguments.")
+    parser = argparse.ArgumentParser(description="Makes the tempo of any song with varying tempo constant.")
 
     parser.add_argument('audio_file', help='input audio file, wav only')
     parser.add_argument('csv_file', help='csv file, specs in README')

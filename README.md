@@ -33,7 +33,7 @@ Does exactly what it is told to. Requires all packages in `requirements.txt`, wo
 ```
 usage: tempo_normalizer.py [-h] audio_file csv_file out_bpm out_file
 
-A script with 3 positional arguments.
+Makes the tempo of any song with varying tempo constant.
 
 positional arguments:
   audio_file  input audio file, wav only
