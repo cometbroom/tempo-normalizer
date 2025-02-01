@@ -23,6 +23,8 @@ Example:
 8,180
 ```
 
+**ITEMS MUST BE SORTED BY `beat_no`. NO TEMPO MAY BE NEAR 0 OR NEGATIVE**
+
 Represents a song that starts with a BPM of 120, changes to 150 at beat 4, and changes to 180 at beat 8. **Beats count
 from 0.** This csv should describe the tempo of the input audio file.
 
