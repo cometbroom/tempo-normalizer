@@ -1,12 +1,14 @@
-import librosa
+from librosa import frames_to_time
+from librosa.beat import beat_track
 import argparse
 from tempo_normalizer import Change
 from pathlib import Path
+from audio_utils.load import load
 
 def detect_tempos(audio_file: str, beats_per_bar: int = 4) -> list[Change]:
-    y, sr = librosa.load(audio_file)
-    tempo, beat_frames = librosa.beat.beat_track(y=y, sr=sr)
-    beat_times = librosa.frames_to_time(beat_frames, sr=sr)
+    y, sr = load(audio_file)
+    tempo, beat_frames = beat_track(y=y, sr=sr)
+    beat_times = frames_to_time(beat_frames, sr=sr)
 
     changes = []
     for start in range(0, len(beat_times), beats_per_bar):
