@@ -5,6 +5,7 @@ import librosa
 import numpy as np
 from pydub import AudioSegment
 from itertools import zip_longest
+from audio_utils.load import extract_waveform
 
 
 @dataclass
@@ -13,6 +14,10 @@ class Change:
     """
     beat: float
     bpm: float
+
+    @classmethod
+    def from_string(cls, beat: str, bpm: str):
+        return cls(beat=float(beat.strip()), bpm=float(bpm.strip()))
 
     @classmethod
     def from_list(cls, inputs: list[tuple[float, float]]) -> list["Change"]:
@@ -96,21 +101,32 @@ def make_constant(base_audio: AudioSegment, bpm_changes: list[Change], output_bp
     return combined
 
 
-def recipe(audio_file: str, csv_input: str, bpm: float, audio_output: str, is_csv_string: bool = False) -> None:
-    audio_segment = AudioSegment.from_file(audio_file, format="wav")
-    if is_csv_string:
-        # Parse comma-separated string input
-        bpm_changes = Change.from_list([
-            tuple(float(a.strip()) for a in line.split(","))
-            for line in csv_input.strip().split("\n")
-        ])
-    else:
-        # Parse CSV file
-        bpm_changes = Change.from_list([
-            tuple(float(a.strip()) for a in line.split(","))
-            for line in Path(csv_input).read_text(encoding="UTF-8").strip().split("\n")
-        ])
+def serialze_csv(csv_file, is_csv_string: bool = False):
+    content = csv_file if is_csv_string else Path(csv_file).read_text(encoding="UTF-8")
+    changes_list = []
+
+    for line in content.strip().split("\n"):
+        beat, tempo = line.split(",")
+        change = Change.from_string(beat, tempo)
+        changes_list.append(change)
+
+    return changes_list
+
+
+def recipe(audio_file: str, csv_input: str, bpm: float, audio_output: str, is_csv_string: bool = False,
+           sr=44100) -> None:
+    audio_data = extract_waveform(Path(audio_file), sample_rate=sr)
+    audio_data = audio_data[0] if len(audio_data) == 2 else audio_data[:, 0]
+    audio_segment = AudioSegment(
+        audio_data.tobytes(),
+        frame_rate=sr,
+        sample_width=audio_data.dtype.itemsize,
+        channels=1
+    )
+
+    bpm_changes = serialze_csv(csv_input, is_csv_string=is_csv_string)
     stretched = make_constant(audio_segment, bpm_changes, bpm)
+
     stretched.export(audio_output, "wav")
 
 

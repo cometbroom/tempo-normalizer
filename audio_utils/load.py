@@ -2,7 +2,7 @@ from pathlib import Path
 from librosa.core import resample
 from soundfile import write
 from librosa import load
-from .conversion import convert_to_wav
+from .conversion import convert_to_wav_data
 
 DESIRED_SAMPLE_RATE = 44100
 
@@ -17,11 +17,11 @@ def ensure_sample_rate(waveform, original_sample_rate, desired_sample_rate=DESIR
 def extract_waveform(wav_file_path: Path, sample_rate=DESIRED_SAMPLE_RATE):
     path = wav_file_path.absolute().as_posix()
 
-    wav_data, sr = load(path)
+    wav_data, sr = load(path, mono=True)
     wav_data = ensure_sample_rate(wav_data, sample_rate)
 
     if wav_file_path.suffix != '.wav':
-        wav_data = convert_to_wav(wav_data, sample_rate)
+        wav_data = convert_to_wav_data(wav_data, sample_rate)
 
     return wav_data
 
