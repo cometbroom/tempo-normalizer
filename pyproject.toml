@@ -1,0 +1,12 @@
+[project]
+name = "tempo-normalizer"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "pydub",
+    "librosa",
+    "numpy",
+    "pysoundfile",
+    "soundfile",
+]

@@ -1,11 +1,11 @@
 import argparse
 from dataclasses import dataclass
 from pathlib import Path
-
 import librosa
 import numpy as np
 from pydub import AudioSegment
 from itertools import zip_longest
+from audio_utils.load import extract_waveform
 
 
 @dataclass
@@ -14,6 +14,10 @@ class Change:
     """
     beat: float
     bpm: float
+
+    @classmethod
+    def from_string(cls, beat: str, bpm: str):
+        return cls(beat=float(beat.strip()), bpm=float(bpm.strip()))
 
     @classmethod
     def from_list(cls, inputs: list[tuple[float, float]]) -> list["Change"]:
@@ -37,11 +41,6 @@ def stretch_audio(audio: AudioSegment, speed_up_factor: float) -> AudioSegment:
     )
     return output_audio
 
-    # factors = factor_small_number(speed_up_factor)
-    # for f in factors:
-    #     audio = stretch_audio_ffmpeg_unsafe(audio, f)
-    # return audio
-
 
 @dataclass
 class ChangeCandidates:
@@ -50,13 +49,11 @@ class ChangeCandidates:
     bpm_to: float
 
     def apply_speed(self) -> AudioSegment:
-        # print(len(self.seg))
         if self.bpm_from < 0.001:
             raise ValueError("BPM from is absurdly close to a division by zero")
         if self.bpm_from == self.bpm_to:
             return self.seg
         stretched = stretch_audio(self.seg, self.bpm_to / self.bpm_from)
-        # print(f"COMP: {len(stretched)}, {len(self.seg) * (self.bpm_from / self.bpm_to)}")
         return stretched
 
 
@@ -84,7 +81,6 @@ def make_constant(base_audio: AudioSegment, bpm_changes: list[Change], output_bp
             raise ValueError("BPM changes must be sorted by the time they occur")
         segment_from = current.beat
         segment_to = following.beat if following is not None else len(base_audio)
-        # (segment beat count) * (seconds per beat) * 1000
         segment_length_ms = (segment_to - segment_from) * (60 / current.bpm) * 1000
         change_list.append(ChangeCandidates(
             seg=base_audio[base_milliseconds:base_milliseconds + segment_length_ms],
@@ -105,25 +101,55 @@ def make_constant(base_audio: AudioSegment, bpm_changes: list[Change], output_bp
     return combined
 
 
-def recipe(audio_file: str, csv_file: str, bpm: float, audio_output: str) -> None:
-    audio_segment = AudioSegment.from_file(audio_file, format="wav")
-    stretched = make_constant(audio_segment,
-                              Change.from_list([(tuple([float((a).strip()) for a in t.split(",")])) for t in
-                                                Path(csv_file).read_text(encoding="UTF-8").strip().split("\n")]),
-                              bpm)
+def serialze_csv(csv_file, is_csv_string: bool = False):
+    content = csv_file if is_csv_string else Path(csv_file).read_text(encoding="UTF-8")
+    changes_list = []
+
+    for line in content.strip().split("\n"):
+        beat, tempo = line.split(",")
+        change = Change.from_string(beat, tempo)
+        changes_list.append(change)
+
+    return changes_list
+
+
+def recipe(audio_file: str, csv_input: str, bpm: float, audio_output: str, is_csv_string: bool = False,
+           sr=44100) -> None:
+    audio_data = extract_waveform(Path(audio_file), sample_rate=sr)
+    audio_data = audio_data[0] if len(audio_data) == 2 else audio_data[:, 0]
+    audio_segment = AudioSegment(
+        audio_data.tobytes(),
+        frame_rate=sr,
+        sample_width=audio_data.dtype.itemsize,
+        channels=1
+    )
+
+    bpm_changes = serialze_csv(csv_input, is_csv_string=is_csv_string)
+    stretched = make_constant(audio_segment, bpm_changes, bpm)
+
     stretched.export(audio_output, "wav")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Makes the tempo of any song with varying tempo constant.")
-
     parser.add_argument('audio_file', help='input audio file, wav only')
-    parser.add_argument('csv_file', help='csv file, specs in README')
+    parser.add_argument('--csv-file', help='csv file with beat,bpm pairs')
+    parser.add_argument('--csv-string', help='comma-separated string of beat,bpm pairs (e.g., "0,120\n1,140")')
     parser.add_argument('out_bpm', type=float, help='output wav will have this bpm')
     parser.add_argument('out_file', help='wav only, save to')
-    # Parse the arguments
+
     args = parser.parse_args()
-    recipe(args.audio_file, args.csv_file, args.out_bpm, args.out_file)
+
+    if (args.csv_file is None) == (args.csv_string is None):
+        parser.error("Exactly one of --csv-file or --csv-string must be provided")
+
+    recipe(
+        args.audio_file,
+        args.csv_file if args.csv_file else args.csv_string,
+        args.out_bpm,
+        args.out_file,
+        is_csv_string=bool(args.csv_string)
+    )
 
 
 if __name__ == '__main__':
