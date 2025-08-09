@@ -1,10 +1,10 @@
-
 from pathlib import Path
 from librosa.core import resample
 from soundfile import write
 from librosa import load
 
 DESIRED_SAMPLE_RATE = 44100
+
 
 def ensure_sample_rate(original_sample_rate, waveform, desired_sample_rate=DESIRED_SAMPLE_RATE):
     """Resample waveform if required."""

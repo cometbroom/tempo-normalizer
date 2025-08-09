@@ -5,6 +5,7 @@ from tempo_normalizer import Change
 from pathlib import Path
 from audio_utils.load import load
 
+
 def detect_tempos(audio_file: str, beats_per_bar: int = 4) -> list[Change]:
     y, sr = load(audio_file)
     tempo, beat_frames = beat_track(y=y, sr=sr)
